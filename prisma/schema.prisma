@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Post {
+  id           String      @id @default(cuid())
+  title        String
+  content      String?
+  imageUrl     String?
+  category     String
+  authorWallet String
+  upvotes      Int         @default(0)
+  downvotes    Int         @default(0)
+  score        Int         @default(0)
+  isPrediction Boolean     @default(false)
+  comments     Comment[]
+  votes        Vote[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([category])
+  @@index([createdAt])
+  @@index([score])
+  @@index([isPrediction])
+}
+
+model Comment {
+  id           String   @id @default(cuid())
+  content      String
+  imageUrl     String?
+  authorWallet String
+  postId       String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId     String?
+  isPrediction Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([postId])
+  @@index([createdAt])
+  @@index([isPrediction])
+}
+
+model Vote {
+  id          String @id @default(cuid())
+  postId      String
+  post        Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  voterWallet String
+  voteType    Int // 1 = upvote, -1 = downvote
+
+  @@unique([postId, voterWallet])
+  @@index([postId])
+}
+
+// ユーザーの信頼性スコア（SBT風）
+model UserTrust {
+  id             String       @id @default(cuid())
+  wallet         String       @unique
+  totalPoints    Int          @default(0)
+  correctCount   Int          @default(0)
+  incorrectCount Int          @default(0)
+  pendingCount   Int          @default(0)
+  trustLevel     Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  predictions    Prediction[]
+  verifications  Verification[]
+
+  @@index([wallet])
+  @@index([trustLevel])
+  @@index([totalPoints])
+}
+
+// 予測・主張
+model Prediction {
+  id             String        @id @default(cuid())
+  content        String
+  authorWallet   String
+  postId         String?       @unique
+  commentId      String?       @unique
+  deadline       DateTime?
+  status         String        @default("pending")
+  correctVotes   Int           @default(0)
+  incorrectVotes Int           @default(0)
+  totalVerifiers Int           @default(0)
+  finalizedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  userTrust      UserTrust?    @relation(fields: [authorWallet], references: [wallet])
+  verifications  Verification[]
+
+  @@index([authorWallet])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// 検証・判定
+model Verification {
+  id             String     @id @default(cuid())
+  predictionId   String
+  prediction     Prediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  verifierWallet String
+  result         String
+  verifierTrust  Int        @default(0)
+  createdAt      DateTime   @default(now())
+  userTrust      UserTrust? @relation(fields: [verifierWallet], references: [wallet])
+
+  @@unique([predictionId, verifierWallet])
+  @@index([predictionId])
+  @@index([verifierWallet])
+}
+
+// カテゴリ
+model Category {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  label        String
+  description  String
+  icon         String   @default("📁")
+  color        String   @default("gray")
+  authorWallet String
+  isDefault    Boolean  @default(false)
+  postCount    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([name])
+  @@index([authorWallet])
+  @@index([postCount])
+}
