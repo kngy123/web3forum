@@ -60,10 +60,11 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ success: true, data: transformedPosts });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching posts:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: '投稿の取得に失敗しました' },
+      { success: false, error: '投稿の取得に失敗しました', details: errorMessage },
       { status: 500 }
     );
   }
@@ -74,6 +75,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { title, content, imageUrl, category, authorWallet, isPrediction } = body;
+
+    console.log('Creating post:', { title, category, authorWallet, isPrediction });
 
     if (!title || !category || !authorWallet) {
       return NextResponse.json(
@@ -111,11 +114,13 @@ export async function POST(request: NextRequest) {
     // Ensure user trust record exists
     await getOrCreateUserTrust(authorWallet);
 
+    console.log('Post created successfully:', post.id);
     return NextResponse.json({ success: true, data: post });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating post:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: '投稿の作成に失敗しました' },
+      { success: false, error: '投稿の作成に失敗しました', details: errorMessage },
       { status: 500 }
     );
   }

@@ -12,6 +12,7 @@ export async function GET() {
 
     // カテゴリが存在しない場合はデフォルトカテゴリを作成
     if (categories.length === 0) {
+      console.log('No categories found, seeding default categories...');
       const defaultCategories = DEFAULT_CATEGORIES.map((cat) => ({
         name: cat.name,
         label: cat.label,
@@ -32,10 +33,11 @@ export async function GET() {
     }
 
     return NextResponse.json({ success: true, data: categories });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching categories:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: 'カテゴリの取得に失敗しました' },
+      { success: false, error: 'カテゴリの取得に失敗しました', details: errorMessage },
       { status: 500 }
     );
   }
@@ -46,6 +48,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { name, label, description, icon, color, authorWallet } = body;
+
+    console.log('Creating category:', { name, label, description, authorWallet });
 
     if (!name || !label || !description || !authorWallet) {
       return NextResponse.json(
@@ -90,11 +94,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log('Category created successfully:', category.id);
     return NextResponse.json({ success: true, data: category });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating category:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, error: 'カテゴリの作成に失敗しました' },
+      { success: false, error: 'カテゴリの作成に失敗しました', details: errorMessage },
       { status: 500 }
     );
   }
